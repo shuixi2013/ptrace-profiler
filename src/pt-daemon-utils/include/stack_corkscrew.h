@@ -47,7 +47,7 @@ public:
     , m_sp (0)
     , m_functionToken (0)
   {
-    memset (m_function, 0, sizeof (m_function));
+    m_function [0] = '\0';
   }
 
   size_t m_level;

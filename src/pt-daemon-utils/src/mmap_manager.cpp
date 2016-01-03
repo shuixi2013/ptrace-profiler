@@ -6,7 +6,13 @@
 
 #include <cassert>
 
+#include <cstring>
+
 #include <errno.h>
+
+#include <stdlib.h>
+
+#include <stdio.h>
 
 #include <string>
 

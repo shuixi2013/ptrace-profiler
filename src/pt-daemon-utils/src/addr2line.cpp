@@ -4,6 +4,16 @@
 
 #include "addr2line.h"
 
+#include <cassert>
+
+#include <cstring>
+
+#include <errno.h>
+
+#include <stdlib.h>
+
+#include <stdio.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +222,7 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
 
     code = CloseHandle (stdErrReadTmp);
 
-	_ASSERT (code == TRUE);
+    _ASSERT (code == TRUE);
   }
 
   if (process->pipes [StdInWrite])
@@ -221,7 +231,6 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
 
     int code = DuplicateHandle (GetCurrentProcess (), stdInWriteTmp, GetCurrentProcess (), &process->pipes [StdInWrite], 0, TRUE, DUPLICATE_SAME_ACCESS);
 
-	_ASSERT (code == TRUE);
 
     code = CloseHandle (stdInWriteTmp);
 
@@ -352,7 +361,7 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
 
 bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *process)
 {
-  int code = FALSE;
+  int code = 0;
 
 #ifdef WIN32
 
@@ -388,7 +397,7 @@ bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *p
 
 #endif
 
-  return (code == TRUE);
+  return (code == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +408,7 @@ bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, si
 {
   unsigned long bytesWritten;
 
-  int code = FALSE;
+  int code = 0;
 
 #ifdef WIN32
 
@@ -429,7 +438,7 @@ bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, si
 
 #endif
 
-  return (code == TRUE);
+  return (code == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

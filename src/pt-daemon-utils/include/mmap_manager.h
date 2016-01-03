@@ -31,9 +31,9 @@ public:
     , offset (0)
     , inode (0)
   {
-    memset (permissions, 0, sizeof (permissions));
+    permissions [0] = '\0';
 
-    memset (pathname, 0, sizeof (pathname));
+    pathname [0] = '\0';
   }
 
   unsigned long long start;
