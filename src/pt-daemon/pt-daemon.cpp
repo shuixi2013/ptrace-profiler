@@ -379,13 +379,26 @@ int main (int argc, char* argv[])
   // Open file for JSON frame logging.
   // 
 
-  const char *jsonDataFile = "/data/local/tmp/cpuprofiler.json";
+  char jsonDataFilename [256];
 
-  g_frameDataFile = fopen (jsonDataFile, "w");
+#if defined (ANDROID)
+
+  sprintf (jsonDataFilename, "/data/local/tmp/cpuprofiler.json");
+
+  g_frameDataFile = fopen (jsonDataFilename, "w");
+
+#endif
 
   if (!g_frameDataFile)
   {
-    fprintf (stderr, "Failed to open exportable frame data file (%s). %s.\n", jsonDataFile, strerror (errno));
+    sprintf (jsonDataFilename, "cpuprofiler.json");
+
+    g_frameDataFile = fopen (jsonDataFilename, "w");
+  }
+
+  if (!g_frameDataFile)
+  {
+    fprintf (stderr, "Failed to open exportable frame data file (%s). %s.\n", jsonDataFilename, strerror (errno));
 
     fflush (stderr);
 
