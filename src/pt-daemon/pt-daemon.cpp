@@ -427,7 +427,7 @@ int main (int argc, char* argv[])
 
       mmapManager.ConvertToJSON (json);
 
-      fprintf (g_frameDataFile, json.c_str ());
+      fprintf (g_frameDataFile, "%s", json.c_str ());
 
       fprintf (g_frameDataFile, ","); // trailing comma.
     }
@@ -455,7 +455,7 @@ int main (int argc, char* argv[])
     {
       const pid_t thread = processThreads [i];
 
-      fprintf (g_frameDataFile, "%s{\"tid\":%ld,\"name\":\"Thread %ld\"}", ((i > 0) ? "," : ""), thread, thread);
+      fprintf (g_frameDataFile, "%s{\"tid\":%u,\"name\":\"Thread %u\"}", ((i > 0) ? "," : ""), thread, thread);
     }
 
     fprintf (g_frameDataFile, "],");
