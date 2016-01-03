@@ -48,7 +48,7 @@
 
 #include <sys/types.h>
 
-#if defined (__ANDROID__)
+#if defined (__ANDROID__) || defined (__linux__)
 
 #include <dirent.h>
 
@@ -59,6 +59,14 @@
 #include <sys/ptrace.h>
 
 #include <sys/syscall.h>
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if defined (ANDROID)
 
 #include <libunwind.h>
 
@@ -96,7 +104,7 @@ FILE *g_frameDataFile = NULL;
 
 static int64_t GetCurrentTimeNanos ()
 {
-#if defined (ANDROID)
+#if defined (ANDROID) || defined (__linux__)
 
   struct timespec now = { 0, 0 };
 
@@ -125,7 +133,7 @@ static bool GetProcessesThreads (pid_t pid, std::vector<pid_t> &processThreads)
   // On Linux these can either be spawned processes, or threads.
   // 
 
-#if defined (ANDROID)
+#if defined (ANDROID) || defined (__linux__)
 
   char procPath [256];
 
@@ -189,7 +197,7 @@ static inline int tgkill (pid_t tgid, pid_t tid, int sig)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined (ANDROID)
+#if defined (ANDROID) || defined (__linux__)
 
 static void SignalHandler (int sig)
 {
@@ -211,7 +219,7 @@ static void SignalHandler (int sig)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined (ANDROID)
+#if defined (ANDROID) || defined (__linux__)
 
 static long PtraceAttach (pid_t pid)
 {
@@ -249,7 +257,7 @@ static long PtraceAttach (pid_t pid)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined (ANDROID)
+#if defined (ANDROID) || defined (__linux__)
 
 static long PtraceDetach (pid_t pid)
 {
@@ -578,7 +586,7 @@ int main (int argc, char* argv[])
 
       std::vector <pid_t> stoppedThreads;
 
-    #if defined (ANDROID)
+    #if defined (ANDROID) || defined (__linux__)
 
       for (uint32_t i = 0; i < processThreads.size (); ++i)
       {
@@ -732,7 +740,7 @@ int main (int argc, char* argv[])
       // Detach (and continue) an attached process.
       // 
 
-    #if defined (ANDROID)
+    #if defined (ANDROID) || defined (__linux__)
 
       for (uint32_t i = 0; i < attachedThreads.size (); ++i)
       {
@@ -813,7 +821,7 @@ int main (int argc, char* argv[])
     // Calculate time till next required re-sampling; don't sleep if it's too little time.
     // 
 
-  #ifdef ANDROID
+  #if defined (ANDROID) || defined (__linux__)
 
     const int64_t requiredSleepDurationNanos = (lastUpdateTimestampNanos + samplingInterval) - GetCurrentTimeNanos ();
 
