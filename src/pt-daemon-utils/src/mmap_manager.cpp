@@ -118,7 +118,7 @@ size_t MemoryMapManager::ParseUnixProcessMapsFile (const char *filename)
   {
     MemoryMapRegion mapData;
 
-    result = fscanf (mapsFile, "%lx%lx %4s %lx %*x:%*x %ld", &mapData.start, &mapData.end, mapData.permissions, &mapData.offset, &mapData.inode);
+    result = fscanf (mapsFile, "%llx%llx %4s %llx %*x:%*x %ld", &mapData.start, &mapData.end, mapData.permissions, &mapData.offset, &mapData.inode);
 
     if ((result <= 0) || (result == EOF))
     {
@@ -127,6 +127,7 @@ size_t MemoryMapManager::ParseUnixProcessMapsFile (const char *filename)
 
     // 
     // The length and/or presence of a map region name is rather inconsistent, so we need to parse carefully.
+	// TODO: Reading 1-byte at a time is lame - good candidate for a refactor.
     // 
 
     char buffer [1024];

@@ -193,39 +193,39 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
   {
     HANDLE stdOutReadTmp = process->pipes [StdOutRead];
 
-    bool success = DuplicateHandle (GetCurrentProcess (), stdOutReadTmp, GetCurrentProcess (), &process->pipes [StdOutRead], 0, TRUE, DUPLICATE_SAME_ACCESS);
+    int code = DuplicateHandle (GetCurrentProcess (), stdOutReadTmp, GetCurrentProcess (), &process->pipes [StdOutRead], 0, TRUE, DUPLICATE_SAME_ACCESS);
 
-    _ASSERT (success);
+    _ASSERT (code);
 
-    success = CloseHandle (stdOutReadTmp);
+    code = CloseHandle (stdOutReadTmp);
 
-    _ASSERT (success);
+    _ASSERT (code);
   }
 
   if (process->pipes [StdErrRead])
   {
     HANDLE stdErrReadTmp = process->pipes [StdErrRead];
 
-    bool success = DuplicateHandle (GetCurrentProcess (), stdErrReadTmp, GetCurrentProcess (), &process->pipes [StdErrRead], 0, TRUE, DUPLICATE_SAME_ACCESS);
+    int code = DuplicateHandle (GetCurrentProcess (), stdErrReadTmp, GetCurrentProcess (), &process->pipes [StdErrRead], 0, TRUE, DUPLICATE_SAME_ACCESS);
 
-    _ASSERT (success);
+    _ASSERT (code == TRUE);
 
-    success = CloseHandle (stdErrReadTmp);
+    code = CloseHandle (stdErrReadTmp);
 
-    _ASSERT (success);
+	_ASSERT (code == TRUE);
   }
 
   if (process->pipes [StdInWrite])
   {
     HANDLE stdInWriteTmp = process->pipes [StdInWrite];
 
-    bool success = DuplicateHandle (GetCurrentProcess (), stdInWriteTmp, GetCurrentProcess (), &process->pipes [StdInWrite], 0, TRUE, DUPLICATE_SAME_ACCESS);
+    int code = DuplicateHandle (GetCurrentProcess (), stdInWriteTmp, GetCurrentProcess (), &process->pipes [StdInWrite], 0, TRUE, DUPLICATE_SAME_ACCESS);
 
-    _ASSERT (success);
+	_ASSERT (code == TRUE);
 
-    success = CloseHandle (stdInWriteTmp);
+    code = CloseHandle (stdInWriteTmp);
 
-    _ASSERT (success);
+    _ASSERT (code == TRUE);
   }
 
   // 
@@ -234,7 +234,7 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
 
   char cmdline [BUFSIZ] = "";
 
-  for (int i = 0; i < m_sysroots->size (); ++i)
+  for (size_t i = 0; i < m_sysroots->size (); ++i)
   {
     char path [BUFSIZ];
 
@@ -352,17 +352,17 @@ bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *pr
 
 bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *process)
 {
-  bool success = false;
+  int code = FALSE;
 
 #ifdef WIN32
 
-  for (int i = 0; i < NumPipeTypes; ++i)
+  for (size_t i = 0; i < NumPipeTypes; ++i)
   {
     if (process->pipes [i])
     {
-      success = CloseHandle (process->pipes [i]);
+      code = CloseHandle (process->pipes [i]);
 
-      _ASSERT (success);
+      _ASSERT (code == TRUE);
 
       process->pipes [i] = 0;
     }
@@ -370,25 +370,25 @@ bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *p
 
   if (process->processInfo.hProcess)
   {
-    success = CloseHandle (process->processInfo.hProcess);
+    code = CloseHandle (process->processInfo.hProcess);
 
-    _ASSERT (success);
+    _ASSERT (code == TRUE);
 
     process->processInfo.hProcess = 0;
   }
 
   if (process->processInfo.hThread)
   {
-    success = CloseHandle (process->processInfo.hThread);
+    code = CloseHandle (process->processInfo.hThread);
 
-    _ASSERT (success);
+    _ASSERT (code == TRUE);
 
     process->processInfo.hThread = 0;
   }
 
 #endif
 
-  return success;
+  return (code == TRUE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -399,17 +399,17 @@ bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, si
 {
   unsigned long bytesWritten;
 
-  bool success = false;
+  int code = FALSE;
 
 #ifdef WIN32
 
   while (process->pipes [StdInWrite] != 0)
   {
-    success = WriteFile (process->pipes [StdInWrite], buffer, bytesToWrite, &bytesWritten, NULL);
+    code = WriteFile (process->pipes [StdInWrite], buffer, bytesToWrite, &bytesWritten, NULL);
 
-    if (!success)
+    if (code == FALSE)
     {
-      _ASSERT (success);
+      _ASSERT (code == TRUE);
 
       break;
     }
@@ -429,7 +429,7 @@ bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, si
 
 #endif
 
-  return success;
+  return (code == TRUE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -452,16 +452,16 @@ bool Addr2Line::ReadFromChildProcess (Addr2LineProcess *process, std::string *st
 
   while (process->pipes [StdOutRead] != 0)
   {
-    bool success = PeekNamedPipe (process->pipes [StdOutRead], NULL, 0, NULL, &bytesAvailable, NULL);
+    int code = PeekNamedPipe (process->pipes [StdOutRead], NULL, 0, NULL, &bytesAvailable, NULL);
 
-    if (!success || bytesAvailable == 0)
+    if ((code == FALSE) || bytesAvailable == 0)
     {
       break;
     }
 
-    success = ReadFile (process->pipes [StdOutRead], buffer, sizeof (buffer), &bytesRead, NULL);
+	code = ReadFile (process->pipes [StdOutRead], buffer, sizeof (buffer), &bytesRead, NULL);
 
-    if (!success)
+    if (code == FALSE)
     {
       break;
     }
@@ -492,16 +492,16 @@ bool Addr2Line::ReadFromChildProcess (Addr2LineProcess *process, std::string *st
 
   while (process->pipes [StdErrRead] != 0)
   {
-    bool success = PeekNamedPipe (process->pipes [StdErrRead], NULL, 0, NULL, &bytesAvailable, NULL);
+    int code = PeekNamedPipe (process->pipes [StdErrRead], NULL, 0, NULL, &bytesAvailable, NULL);
 
-    if (!success || bytesAvailable == 0)
+    if ((code == FALSE) || bytesAvailable == 0)
     {
       break;
     }
 
-    success = ReadFile (process->pipes [StdErrRead], buffer, sizeof (buffer), &bytesRead, NULL);
+    code = ReadFile (process->pipes [StdErrRead], buffer, sizeof (buffer), &bytesRead, NULL);
 
-    if (!success)
+    if (code == FALSE)
     {
       break;
     }

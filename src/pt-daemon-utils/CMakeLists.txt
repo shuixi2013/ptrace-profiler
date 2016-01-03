@@ -1,12 +1,12 @@
 
 cmake_minimum_required (VERSION 3.2)
 
-project (prof-utils)
+project (pt-daemon-utils)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
 
 # 
-# prof-utils
+# pt-daemon-utils
 # 
 
 include_directories (
@@ -36,7 +36,7 @@ set (JANSSON_SOURCES
 
 source_group (jansson FILES ${JANSSON_SOURCES})
 
-add_library (prof-utils STATIC
+add_library (pt-daemon-utils STATIC
   ${JANSSON_SOURCES}
   # headers
   "include/common.h"
@@ -59,7 +59,7 @@ add_library (prof-utils STATIC
 
 add_executable (test-mmap-manager "tests/test_mmap_manager.cpp")
 
-target_link_libraries (test-mmap-manager prof-utils)
+target_link_libraries (test-mmap-manager pt-daemon-utils)
 
 # 
 # test_json_utils
@@ -67,4 +67,4 @@ target_link_libraries (test-mmap-manager prof-utils)
 
 add_executable (test-json-utils "tests/test_json_utils.cpp")
 
-target_link_libraries (test-json-utils prof-utils)
+target_link_libraries (test-json-utils pt-daemon-utils)
