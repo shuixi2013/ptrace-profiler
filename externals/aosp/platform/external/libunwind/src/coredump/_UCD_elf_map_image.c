@@ -29,6 +29,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 static coredump_phdr_t *
 CD_elf_map_image(struct UCD_info *ui, coredump_phdr_t *phdr)
 {
+/* ANDROID support update.*/
+  return NULL;
+#if 0
   struct elf_image *ei = &ui->edi.ei;
 
   if (phdr->backing_fd < 0)
@@ -79,6 +82,8 @@ CD_elf_map_image(struct UCD_info *ui, coredump_phdr_t *phdr)
     }
 
   return phdr;
+#endif
+/* End of ANDROID update. */
 }
 
 HIDDEN coredump_phdr_t *
