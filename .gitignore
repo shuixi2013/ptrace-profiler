@@ -9,4 +9,5 @@ Win32
 *.sdf
 *.vcxproj
 *.vcxproj.filters
+*.vcxproj.user
 *.opendb

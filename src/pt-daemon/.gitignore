@@ -1,12 +1,1 @@
-CMakeFiles
-CMakeCache.txt
-Debug
-Release
-Win32
-.vs
-*.cmake
-*.sln
-*.sdf
-*.vcxproj
-*.vcxproj.filters
-*.opendb
+*.dir
