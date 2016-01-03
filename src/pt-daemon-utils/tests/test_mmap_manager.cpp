@@ -4,6 +4,8 @@
 
 #include "mmap_manager.h"
 
+#include <cstring>
+
 #include <stdio.h>
 
 #include <errno.h>
@@ -66,7 +68,7 @@ int main (int argc, char* argv [])
   {
     char filename [64];
 
-    sprintf (filename, "maps%d.txt", i);
+    sprintf (filename, "maps%zu.txt", i);
 
     FILE *mapsFile = fopen (filename, "w");
 
