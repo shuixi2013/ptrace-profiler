@@ -3,6 +3,8 @@ cmake_minimum_required (VERSION 3.2)
 
 project (pt-daemon-utils)
 
+set (LIBUNWIND_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/aosp/platform/external/libunwind")
+
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
 
 # 
@@ -51,6 +53,10 @@ add_library (pt-daemon-utils STATIC
   "src/mmap_manager.cpp"
   "src/stack_symbolicator.cpp"
   "src/stack_corkscrew.cpp"
+  )
+
+include_directories (pt-daemon-utils
+  "${LIBUNWIND_ROOT}/include"
   )
 
 # 
