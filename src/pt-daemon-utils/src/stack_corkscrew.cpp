@@ -346,7 +346,7 @@ bool StackCorkscrew::ConvertToJson (std::string &output) const
   {
     const StackFrame &frame = m_frames [i];
 
-    snprintf (workingBuffer, sizeof (workingBuffer), "%s{\"level\":%d,\"pc\":\"%llx\",\"sp\":\"%llx\",\"func\":\"%s\"}", ((i > 0) ? "," : ""), frame.m_level, frame.m_pc, frame.m_sp, frame.m_function);
+    snprintf (workingBuffer, sizeof (workingBuffer), "%s{\"level\":%zu,\"pc\":\"%llx\",\"sp\":\"%llx\",\"func\":\"%s\"}", ((i > 0) ? "," : ""), frame.m_level, frame.m_pc, frame.m_sp, frame.m_function);
 
     output.append (workingBuffer);
   }
