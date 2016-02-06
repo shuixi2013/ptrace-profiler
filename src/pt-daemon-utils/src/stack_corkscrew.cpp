@@ -18,7 +18,7 @@
 
 #include <stdio.h>
 
-#if defined (ANDROID) || defined (__linux__)
+#if defined (ANDROID) || defined (__linux__) || defined (__APPLE__)
 
 #include <libunwind.h>
 

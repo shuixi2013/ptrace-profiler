@@ -142,7 +142,7 @@ static bool GetProcessesThreads (pid_t pid, std::vector<pid_t> &processThreads)
     {
       char* end;
 
-      const pid_t pid = (pid_t) strtoul(entry->d_name, &end, 10);
+      const pid_t pid = (pid_t) strtoul (entry->d_name, &end, 10);
 
       if (*end == '\0')
       {

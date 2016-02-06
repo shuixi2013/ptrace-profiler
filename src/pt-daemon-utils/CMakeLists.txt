@@ -3,9 +3,11 @@ cmake_minimum_required (VERSION 3.2)
 
 project (pt-daemon-utils)
 
-set (LIBUNWIND_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/aosp/platform/external/libunwind")
+set (LIBUNWIND_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/libunwind")
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=1")
 
 # 
 # pt-daemon-utils
@@ -58,6 +60,8 @@ add_library (pt-daemon-utils STATIC
 include_directories (pt-daemon-utils
   "${LIBUNWIND_ROOT}/include"
   )
+
+add_dependencies (pt-daemon-utils libunwind)
 
 # 
 # test_map_region

@@ -4,6 +4,8 @@ Debug
 Release
 Win32
 .vs
+.DS_Store
+.idea
 *.cmake
 *.sln
 *.sdf
@@ -11,4 +13,9 @@ Win32
 *.vcxproj.filters
 *.vcxproj.user
 *.opendb
+*.log
+*.status
+*.lo
+**/.deps/*.*
+**/.libs/*.*
 Makefile
