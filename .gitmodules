@@ -1,0 +1,3 @@
+[submodule "externals/kvr"]
+	path = externals/kvr
+	url = https://github.com/webbju/kvr.git

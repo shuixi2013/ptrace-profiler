@@ -3,78 +3,50 @@ cmake_minimum_required (VERSION 3.2)
 
 project (pt-daemon-utils)
 
-set (LIBUNWIND_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/libunwind")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 ${PT_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${PT_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${PT_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+set (PT_DAEMON_UTILS_INCLUDE_DIRS
+  "include"
+  "${PT_PROJECT_ROOT}/externals/kvr/src")
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=1")
+set (PT_DAEMON_UTILS_INCLUDES
+  "include/addr2line.h"
+  "include/json-populator.h"
+  #"include/json-utils.h"
+  "include/mmap-manager.h"
+  "include/stack-corkscrew.h"
+  "include/stack-symbolicator.h"
+  )
 
-# 
-# pt-daemon-utils
-# 
+set (PT_DAEMON_UTILS_SRCS
+  "src/addr2line.cpp"
+  "src/json-populator.cpp"
+  #"src/json-utils.cpp"
+  "src/mmap-manager.cpp"
+  "src/stack-corkscrew.cpp"
+  "src/stack-symbolicator.cpp"
+  )
 
 include_directories (
-  "include"
-  "include/jansson"
+  "${PT_DAEMON_UTILS_INCLUDE_DIRS}"
   )
-
-set (JANSSON_SOURCES
-  #jansson
-  "include/jansson/jansson.h"
-  "include/jansson/jansson_config.h"
-  "src/jansson/jansson_private.h"
-  "src/jansson/dump.c"
-  "src/jansson/error.c"
-  "src/jansson/hashtable.c"
-  "src/jansson/hashtable_seed.c"
-  "src/jansson/load.c"
-  "src/jansson/memory.c"
-  "src/jansson/pack_unpack.c"
-  "src/jansson/strbuffer.c"
-  "src/jansson/strbuffer.h"
-  "src/jansson/strconv.c"
-  "src/jansson/utf.h"
-  "src/jansson/utf.c"
-  "src/jansson/value.c"
-  )
-
-source_group (jansson FILES ${JANSSON_SOURCES})
 
 add_library (pt-daemon-utils STATIC
-  ${JANSSON_SOURCES}
-  # headers
-  "include/common.h"
-  "include/addr2line.h"
-  "include/json_utils.h"
-  "include/mmap_manager.h"
-  "include/stack_symbolicator.h"
-  "include/stack_corkscrew.h"
-  # sources
-  "src/addr2line.cpp"
-  "src/json_utils.cpp"
-  "src/mmap_manager.cpp"
-  "src/stack_symbolicator.cpp"
-  "src/stack_corkscrew.cpp"
+  ${PT_DAEMON_UTILS_INCLUDES}
+  ${PT_DAEMON_UTILS_SRCS}
   )
 
-include_directories (pt-daemon-utils
-  "${LIBUNWIND_ROOT}/include"
-  )
+add_dependencies (pt-daemon-utils kvr)
 
-add_dependencies (pt-daemon-utils libunwind)
+target_link_libraries (pt-daemon-utils kvr)
 
-# 
-# test_map_region
-# 
+#
+# test-mmap-manager
+#
 
-add_executable (test-mmap-manager "tests/test_mmap_manager.cpp")
+add_executable (test-mmap-manager "tests/test-mmap-manager.cpp")
 
 target_link_libraries (test-mmap-manager pt-daemon-utils)
-
-# 
-# test_json_utils
-# 
-
-add_executable (test-json-utils "tests/test_json_utils.cpp")
-
-target_link_libraries (test-json-utils pt-daemon-utils)

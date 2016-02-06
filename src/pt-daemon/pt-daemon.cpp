@@ -18,13 +18,15 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "mmap_manager.h"
+#include "mmap-manager.h"
 
-#include "stack_corkscrew.h"
+#include "stack-corkscrew.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <kvr.h>
 
 #include <cstring>
 
@@ -120,6 +122,10 @@ static bool GetProcessesThreads (pid_t pid, std::vector<pid_t> &processThreads)
   // Acquire a list of running child processes from this ppid (parent pid).
   // On Linux these can either be spawned processes, or threads.
   // 
+
+  (void) pid;
+
+  (void) processThreads;
 
 #if defined (ANDROID) || defined (__linux__)
 
@@ -359,8 +365,6 @@ int main (int argc, char* argv[])
 
 #if defined (ANDROID) || defined (__linux__)
 
-  setvbuf (stdout, NULL, _IONBF, 0);
-
   signal (SIGINT, SignalHandler);
 
   signal (SIGQUIT, SignalHandler);
@@ -403,7 +407,12 @@ int main (int argc, char* argv[])
     return ERR_FAILED;
   }
 
-  fprintf (g_frameDataFile, "{");
+  //
+  //
+
+  kvr::ctx *jsonContext = kvr::ctx::create ();
+
+  kvr::value *jsonRootNode = jsonContext->create_value ()->conv_map ();
 
   // 
   // Read and report the current shared library mappings.
@@ -417,15 +426,11 @@ int main (int argc, char* argv[])
 
     snprintf (filename, 64, "/proc/%d/maps", g_pid);
 
-    if (mmapManager.ParseUnixProcessMapsFile (filename))
+    kvr::value *mapsNode = jsonRootNode->insert_array ("maps");
+
+    if (mapsNode && mmapManager.ParseUnixProcessMapsFile (filename))
     {
-      std::string json;
-
-      mmapManager.ConvertToJSON (json);
-
-      fprintf (g_frameDataFile, "%s", json.c_str ());
-
-      fprintf (g_frameDataFile, ","); // trailing comma.
+      mmapManager.PopulateJsonArray (*mapsNode);
     }
   }
 
@@ -445,28 +450,36 @@ int main (int argc, char* argv[])
       return ERR_FAILED;
     }
 
-    fprintf (g_frameDataFile, "\"threads\":[");
+    kvr::value *threadsNode = jsonRootNode->insert_array ("threads");
 
     for (uint32_t i = 0; i < processThreads.size (); ++i)
     {
       const pid_t thread = processThreads [i];
 
-      fprintf (g_frameDataFile, "%s{\"tid\":%u,\"name\":\"Thread %u\"}", ((i > 0) ? "," : ""), thread, thread);
-    }
+      char threadName [32];
 
-    fprintf (g_frameDataFile, "],");
+      snprintf (threadName, 32, "Thread %u", thread);
+
+      kvr::value *threadNode = threadsNode->push_map ();
+
+      threadNode->insert ("tid", thread);
+
+      threadNode->insert ("name", threadName);
+    }
   }
 
   if (g_verbose)
   {
-    printf ("Attaching to parent PID (%d)...\n", g_pid);
-  }
+    fprintf (stdout, "Attaching to parent PID (%d)...\n", g_pid);
 
-  fprintf (g_frameDataFile, "\"samples\":[");
+    fflush (stdout);
+  }
 
   // 
   // Scheduled timer wait loop.
   // 
+
+  kvr::value *samplesNode = jsonRootNode->insert_array ("samples");
 
   const int64_t samplingInterval = (1000000000LL / g_sampleFrequencyHz);
 
@@ -484,9 +497,9 @@ int main (int argc, char* argv[])
       // Validate suspended status of the target process.
       // 
 
-      bool suspended = false;
-
     #if defined (ANDROID) && 0
+
+      bool suspended = false;
 
       {
         errno = 0;
@@ -539,7 +552,7 @@ int main (int argc, char* argv[])
 
           if (g_verbose)
           {
-            printf ("Target PID (%u) suspended with signal %d (%s).\n", g_pid, signalCode, "");
+            fprintf (stdout, "Target PID (%u) suspended with signal %d (%s).\n", g_pid, signalCode, "");
           }
         }
       }
@@ -563,7 +576,9 @@ int main (int argc, char* argv[])
 
       if (g_verbose)
       {
-        printf ("PID (%d) has %zu threads.\n", g_pid, processThreads.size ());
+        fprintf (stdout, "PID (%d) has %zu threads.\n", g_pid, processThreads.size ());
+
+        fflush (stdout);
       }
       
       // 
@@ -606,7 +621,9 @@ int main (int argc, char* argv[])
 
         if (g_verbose)
         {
-          printf ("Attaching to thread TID (%d)...\n", thread);
+          fprintf (stdout, "Attaching to thread TID (%d)...\n", thread);
+
+          fflush (stdout);
         }
 
         const int attach = PtraceAttach (thread);
@@ -649,7 +666,9 @@ int main (int argc, char* argv[])
           {
             if (g_verbose)
             {
-              printf ("Discovered thread (%d) has been terminated.\n", thread);
+              fprintf (stdout, "Discovered thread (%d) has been terminated.\n", thread);
+
+              fflush (stdout);
             }
 
             continue;
@@ -663,7 +682,9 @@ int main (int argc, char* argv[])
 
             if (g_verbose)
             {
-              printf ("Thread (%u) received signal %d (%s).\n", thread, signalCode, "");
+              fprintf (stdout, "Thread (%u) received signal %d (%s).\n", thread, signalCode, "");
+
+              fflush (stdout);
             }
 
             if (signalCode == SIGSTOP)
@@ -682,11 +703,11 @@ int main (int argc, char* argv[])
 
       const size_t ignoreDepth = 0, maxDepth = 32;
 
-      static bool requiresLeadingComma = false;
+      kvr::value *sampleNode = samplesNode->push_map ();
 
-      fprintf (g_frameDataFile, "%s{\"time\":%lld,\"threads\":[", ((requiresLeadingComma) ? "," : ""), GetCurrentTimeNanos ());
+      sampleNode->insert ("time", GetCurrentTimeNanos ());
 
-      requiresLeadingComma = true;
+      kvr::value *sampleThreadsNode = sampleNode->insert_array ("threads");
 
       for (uint32_t i = 0; i < stoppedThreads.size (); ++i)
       {
@@ -694,35 +715,33 @@ int main (int argc, char* argv[])
 
         if (g_verbose)
         {
-          printf ("Starting backtrace sampling for thread (%u)...\n", thread);
+          fprintf (stdout, "Starting backtrace sampling for thread (%u)...\n", thread);
         }
 
-        std::string framesJson;
+        kvr::value *threadsNode = sampleThreadsNode->push_map ();
 
-        StackCorkscrew corkscrew;
+        threadsNode->insert ("tid", thread);
 
         const int64_t timeBeganSampling = GetCurrentTimeNanos ();
 
-        const size_t stackDepth = corkscrew.Unwind (g_pid, thread, ignoreDepth, maxDepth);
+        StackCorkscrew corkscrew (g_pid, thread, ignoreDepth, maxDepth);
 
         lastUpdateTimestampNanos = GetCurrentTimeNanos ();
 
-        if (corkscrew.ConvertToJson (framesJson))
-        {
-          fprintf (g_frameDataFile, "%s{\"tid\":%d,%s}", ((i > 0) ? "," : ""), thread, framesJson.c_str ());
-        }
+        corkscrew.PopulateJsonObject (*threadsNode);
 
-        if (stackDepth && g_verbose)
+        if (g_verbose)
         {
           const int64_t samplingDuration = lastUpdateTimestampNanos - timeBeganSampling;
 
-          printf ("Completed thread sampling (%u) in %lld.%lld ns.\n", thread, (samplingDuration / 1000000000LL), (samplingDuration % 1000000000LL));
+          fprintf (stdout, "Completed sampling (tid: %u, depth: %zu) in %lld.%lld ns.\n", thread, corkscrew.GetDepth (), (samplingDuration / 1000000000LL), (samplingDuration % 1000000000LL));
+        }
+
+        if (g_verbose)
+        {
+          fflush (stdout);
         }
       }
-
-      fprintf (g_frameDataFile, "]}");
-
-      fflush (g_frameDataFile);
 
       // 
       // Detach (and continue) an attached process.

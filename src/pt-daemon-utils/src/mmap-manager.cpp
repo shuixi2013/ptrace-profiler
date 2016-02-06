@@ -1,0 +1,306 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include "mmap-manager.h"
+
+#include <cassert>
+
+#include <cstring>
+
+#include <errno.h>
+
+#include <stdlib.h>
+
+#include <stdio.h>
+
+#include <string>
+
+#include <inttypes.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MemoryMapManager::MemoryMapManager ()
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MemoryMapManager::~MemoryMapManager ()
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+size_t MemoryMapManager::ParseJson (const kvr::value &mapsRoot)
+{
+  // 
+  // Parse a JSON array containing map region data. Format described in ConvertToJSON.
+  // 
+
+  assert (mapsRoot.is_array ());
+
+  m_regions.clear ();
+
+  const size_t arrayLen = mapsRoot.length ();
+
+  for (size_t i = 0; i < arrayLen; ++i)
+  {
+    kvr::value *node = mapsRoot.element (i);
+
+    if (!node)
+    {
+      continue;
+    }
+
+    MemoryMapRegion map;
+
+    {
+      kvr::value *start = node->find ("start");
+
+      if (start && start->is_string ())
+      {
+        const char *buffer = start->get_string ();
+
+        map.start = strtoull (buffer, NULL, 16);
+      }
+    }
+
+    {
+      kvr::value *end = node->find ("end");
+
+      if (end && end->is_string ())
+      {
+        const char *buffer = end->get_string ();
+
+        map.end = strtoull (buffer, NULL, 16);
+      }
+    }
+
+    {
+      kvr::value *name = node->find ("name");
+
+      if (name && name->is_string ())
+      {
+        const char *buffer = name->get_string ();
+
+        strncpy (map.pathname, buffer, 128);
+      }
+    }
+
+    {
+      kvr::value *permissions = node->find ("permissions");
+
+      if (permissions && permissions->is_string ())
+      {
+        const char *buffer = permissions->get_string ();
+
+        strncpy (map.permissions, buffer, 5);
+      }
+    }
+
+    {
+      kvr::value *offset = node->find ("offset");
+
+      if (offset && offset->is_string ())
+      {
+        const char *buffer = offset->get_string ();
+
+        map.offset = strtoull (buffer, NULL, 16);
+      }
+    }
+
+    m_regions.push_back (map);
+  }
+
+  return m_regions.size ();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+size_t MemoryMapManager::ParseUnixProcessMapsFile (const char *filename)
+{
+  assert (filename != NULL);
+
+  m_regions.clear ();
+
+  FILE *mapsFile = fopen (filename, "r");
+
+  if (!mapsFile)
+  {
+    fprintf (stderr, "Failed to open process maps file (%s). %s.\n", filename, strerror (errno));
+
+    fflush (stderr);
+
+    errno = 0;
+
+    return 0;
+  }
+
+  int result = 0;
+
+  while (true)
+  {
+    MemoryMapRegion mapData;
+
+    result = fscanf (mapsFile, "%llx%llx %4s %llx %*x:%*x %ld", &mapData.start, &mapData.end, mapData.permissions, &mapData.offset, &mapData.inode);
+
+    if ((result <= 0) || (result == EOF))
+    {
+      break;
+    }
+
+    // 
+    // The length and/or presence of a map region name is rather inconsistent, so we need to parse carefully.
+    // TODO: Reading 1-byte at a time is lame - good candidate for a refactor.
+    // 
+
+    char buffer [1024];
+
+    size_t i = 0;
+
+    do
+    {
+      fread (&buffer [i], 1, 1, mapsFile);
+    }
+    while (buffer [i++] != '\n');
+
+    buffer [i - 1] = '\0';
+
+    const char *pathname = buffer;
+
+    while (*pathname == ' ')
+    {
+      pathname += 1;
+    }
+
+    size_t pathnameLen = strlen (pathname);
+
+    const bool validEntry = (pathnameLen >= 7) // at very least must be libX.so
+      && ((strncmp (pathname + (pathnameLen -  3), ".so", 3) == 0)
+      || (strncmp (pathname + (pathnameLen - 4), ".dex", 4) == 0)
+      || (strncmp (pathname + (pathnameLen - 4), ".oat", 4) == 0));
+
+    if (validEntry)
+    {
+      strcpy (mapData.pathname, pathname);
+
+      m_regions.push_back (mapData);
+    }
+
+    result = feof (mapsFile);
+
+    if ((result != 0) || (result == EOF))
+    {
+      break;
+    }
+  }
+
+  fclose (mapsFile);
+
+  return m_regions.size ();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const MemoryMapRegion *MemoryMapManager::FindMapForAddress (uint64_t address) const
+{
+  for (size_t i = 0; i < m_regions.size (); ++i)
+  {
+    const MemoryMapRegion *region = &m_regions [i];
+
+    if (address > region->end)
+    {
+      continue;
+    }
+    else if (address < region->start)
+    {
+      continue;
+    }
+    else if (address >= region->start)
+    {
+      return region;
+    }
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool MemoryMapManager::PopulateJsonObject (kvr::value &node) const
+{
+  if (!node.is_map ())
+  {
+    assert (node.is_map ());
+
+    return false;
+  }
+
+  kvr::value *array = node.insert_array ("frames");
+
+  return PopulateJsonArray (*array);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool MemoryMapManager::PopulateJsonArray (kvr::value &node) const
+{
+  if (!node.is_array ())
+  {
+    assert (node.is_array ());
+
+    return false;
+  }
+
+  std::vector <MemoryMapRegion>::const_iterator it = m_regions.begin ();
+
+  while (it != m_regions.end ())
+  {
+    const MemoryMapRegion &map = *it;
+
+    kvr::value *mapNode = node.push_map ();
+
+    char buffer [32];
+
+    snprintf (buffer, 32, "0x%" PRIx64, map.start);
+
+    mapNode->insert ("start", buffer);
+
+    snprintf (buffer, 32, "0x%" PRIx64, map.end);
+
+    mapNode->insert ("end", buffer);
+
+    snprintf (buffer, 32, "0x%" PRIx64, map.offset);
+
+    mapNode->insert ("offset", buffer);
+
+    mapNode->insert ("permissions", map.permissions);
+
+    mapNode->insert ("name", map.pathname);
+
+    it++;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

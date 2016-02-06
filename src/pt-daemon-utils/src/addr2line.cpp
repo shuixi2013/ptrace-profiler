@@ -22,7 +22,7 @@ Addr2Line::Addr2Line (const std::string &addr2lineTool, const std::vector <std::
   : m_addr2lineTool (addr2lineTool)
   , m_sysroots (sysroots)
 {
-
+  (void) m_sysroots;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +161,10 @@ bool Addr2Line::Symbolicate (const std::string &lib, const std::string &address,
 bool Addr2Line::CreateChildProcess (const std::string &lib, Addr2LineProcess *process)
 {
   bool success = false;
+
+  (void) lib;
+
+  (void) process;
 
 #ifdef WIN32
 
@@ -363,6 +367,10 @@ bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *p
 {
   int code = 0;
 
+  (void) lib;
+
+  (void) process;
+
 #ifdef WIN32
 
   for (size_t i = 0; i < NumPipeTypes; ++i)
@@ -406,9 +414,32 @@ bool Addr2Line::DestroyChildProcess (const std::string &lib, Addr2LineProcess *p
 
 bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, size_t bytesToWrite)
 {
-  unsigned long bytesWritten;
+  if (!process)
+  {
+    assert (process);
+
+    return false;
+  }
+
+  if (!buffer)
+  {
+    assert (buffer);
+
+    return false;
+  }
+
+  if (bytesToWrite == 0)
+  {
+    return false;
+  }
+
+  unsigned long bytesWritten = 0;
 
   int code = 0;
+
+  (void) bytesWritten;
+
+  (void) code;
 
 #ifdef WIN32
 
@@ -447,6 +478,17 @@ bool Addr2Line::WriteToChildProcess (Addr2LineProcess *process, char *buffer, si
 
 bool Addr2Line::ReadFromChildProcess (Addr2LineProcess *process, std::string *stdoutBuffer, std::string *stderrBuffer)
 {
+  (void) stdoutBuffer;
+
+  (void) stderrBuffer;
+
+  if (!process)
+  {
+    assert (process);
+
+    return false;
+  }
+
   bool stdOutSuccess = false, stdErrSuccess = false;
 
   // 
@@ -468,7 +510,7 @@ bool Addr2Line::ReadFromChildProcess (Addr2LineProcess *process, std::string *st
       break;
     }
 
-	code = ReadFile (process->pipes [StdOutRead], buffer, sizeof (buffer), &bytesRead, NULL);
+    code = ReadFile (process->pipes [StdOutRead], buffer, sizeof (buffer), &bytesRead, NULL);
 
     if (code == FALSE)
     {
