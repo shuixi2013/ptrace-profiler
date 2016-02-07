@@ -66,9 +66,9 @@ public:
 
   const MemoryMapRegion *FindMapForAddress (uint64_t address) const;
 
-  bool PopulateJsonObject (kvr::value &node) const override;
+  bool PopulateJsonObject (JsonNode &node) const override;
 
-  bool PopulateJsonArray (kvr::value &node) const override;
+  bool PopulateJsonArray (JsonNode &node) const override;
 
 protected:
 

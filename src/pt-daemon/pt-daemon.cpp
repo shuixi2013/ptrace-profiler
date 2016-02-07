@@ -412,7 +412,7 @@ int main (int argc, char* argv[])
 
   kvr::ctx *jsonContext = kvr::ctx::create ();
 
-  kvr::value *jsonRootNode = jsonContext->create_value ()->conv_map ();
+  JsonNodeKvr jsonRootNode (jsonContext->create_value ()->conv_map ());
 
   // 
   // Read and report the current shared library mappings.
@@ -426,11 +426,11 @@ int main (int argc, char* argv[])
 
     snprintf (filename, 64, "/proc/%d/maps", g_pid);
 
-    kvr::value *mapsNode = jsonRootNode->insert_array ("maps");
+    JsonNodeKvr mapsNode (jsonRootNode.GetImpl ()->insert_array ("maps"));
 
-    if (mapsNode && mmapManager.ParseUnixProcessMapsFile (filename))
+    if (!mapsNode.IsNull () && mmapManager.ParseUnixProcessMapsFile (filename))
     {
-      mmapManager.PopulateJsonArray (*mapsNode);
+      mmapManager.PopulateJsonArray (mapsNode);
     }
   }
 
@@ -450,7 +450,7 @@ int main (int argc, char* argv[])
       return ERR_FAILED;
     }
 
-    kvr::value *threadsNode = jsonRootNode->insert_array ("threads");
+    JsonNodeKvr threadsNode (jsonRootNode.GetImpl ()->insert_array ("threads"));
 
     for (uint32_t i = 0; i < processThreads.size (); ++i)
     {
@@ -460,11 +460,11 @@ int main (int argc, char* argv[])
 
       snprintf (threadName, 32, "Thread %u", thread);
 
-      kvr::value *threadNode = threadsNode->push_map ();
+      JsonNodeKvr threadNode (threadsNode.GetImpl ()->push_map ());
 
-      threadNode->insert ("tid", thread);
+      threadNode.GetImpl ()->insert ("tid", thread);
 
-      threadNode->insert ("name", threadName);
+      threadNode.GetImpl ()->insert ("name", threadName);
     }
   }
 
@@ -479,7 +479,7 @@ int main (int argc, char* argv[])
   // Scheduled timer wait loop.
   // 
 
-  kvr::value *samplesNode = jsonRootNode->insert_array ("samples");
+  JsonNode samplesNode (jsonRootNode.GetImpl()->insert_array ("samples"));
 
   const int64_t samplingInterval = (1000000000LL / g_sampleFrequencyHz);
 
@@ -701,13 +701,15 @@ int main (int argc, char* argv[])
       // Now processes are attached, and suspended - sample their callstacks.
       // 
 
+      StackCorkscrewLibcppabi corkscrew;
+
       const size_t ignoreDepth = 0, maxDepth = 32;
 
-      kvr::value *sampleNode = samplesNode->push_map ();
+      JsonNodeKvr sampleNode (samplesNode.GetImpl ()->push_map ());
 
-      sampleNode->insert ("time", GetCurrentTimeNanos ());
+      sampleNode.GetImpl ()->insert ("time", GetCurrentTimeNanos ());
 
-      kvr::value *sampleThreadsNode = sampleNode->insert_array ("threads");
+      JsonNodeKvr sampleThreadsNode (sampleNode.GetImpl ()->insert_array ("threads"));
 
       for (uint32_t i = 0; i < stoppedThreads.size (); ++i)
       {
@@ -718,17 +720,17 @@ int main (int argc, char* argv[])
           fprintf (stdout, "Starting backtrace sampling for thread (%u)...\n", thread);
         }
 
-        kvr::value *threadsNode = sampleThreadsNode->push_map ();
+        JsonNodeKvr threadsNode (sampleThreadsNode.GetImpl ()->push_map ());
 
-        threadsNode->insert ("tid", thread);
+        threadsNode.GetImpl ()->insert ("tid", thread);
 
         const int64_t timeBeganSampling = GetCurrentTimeNanos ();
 
-        StackCorkscrew corkscrew (g_pid, thread, ignoreDepth, maxDepth);
+        corkscrew.Unwind (g_pid, thread, ignoreDepth, maxDepth);
 
         lastUpdateTimestampNanos = GetCurrentTimeNanos ();
 
-        corkscrew.PopulateJsonObject (*threadsNode);
+        corkscrew.PopulateJsonObject (threadsNode);
 
         if (g_verbose)
         {
@@ -755,10 +757,14 @@ int main (int argc, char* argv[])
 
         if (g_verbose)
         {
-          printf ("Detaching from thread (%u)...\n", thread);
+          fprintf (stdout, "Detaching from thread (%u)...\n", thread);
+
+          fflush (stdout);
         }
 
         const long detach = PtraceDetach (thread);
+
+        (void) detach;
       }
 
     #endif
@@ -875,7 +881,16 @@ int main (int argc, char* argv[])
 
   }
 
-  fprintf (g_frameDataFile, "]}");
+  kvr::obuffer obuf;
+
+  if (jsonRootNode.GetImpl ()->encode (kvr::CODEC_MSGPACK, &obuf))
+  {
+    const uint8_t *buffer = obuf.get_data ();
+
+    const size_t bufferSize = obuf.get_size ();
+
+    fwrite (buffer, bufferSize, 1, g_frameDataFile);
+  }
 
   fflush (g_frameDataFile);
 
@@ -883,8 +898,12 @@ int main (int argc, char* argv[])
 
   if (g_verbose)
   {
-    printf ("Exiting...");
+    fprintf (stdout, "Exiting...");
   }
+
+  fflush (stderr);
+
+  fflush (stdout);
 
   return 0;
 }

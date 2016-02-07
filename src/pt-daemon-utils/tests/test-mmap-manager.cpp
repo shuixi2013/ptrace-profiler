@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "mmap_manager.h"
+#include "mmap-manager.h"
 
 #include <cstring>
 
@@ -60,6 +60,10 @@ b7783000-b7786000 r-xp 00000000 08:06 143        /system/bin/app_process32\n\
 
 int main (int argc, char* argv [])
 {
+  (void) argc;
+
+  (void) argv;
+
   // 
   // Validate /proc/<pid>/maps parsing logic.
   // 
@@ -106,9 +110,11 @@ int main (int argc, char* argv [])
       return 1;
     }
 
-    std::string json;
+    kvr::ctx *jsonContext = kvr::ctx::create ();
 
-    if (!manager.ConvertToJSON (json))
+    JsonNode jsonNode = JsonNodeKvr (*jsonContext->create_value ()->conv_map ());
+
+    if (!manager.PopulateJsonObject (jsonNode))
     {
       fprintf (stderr, "Failed to convert mmap manager to JSON.\n");
 

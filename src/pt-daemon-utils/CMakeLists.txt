@@ -14,8 +14,8 @@ set (PT_DAEMON_UTILS_INCLUDE_DIRS
 
 set (PT_DAEMON_UTILS_INCLUDES
   "include/addr2line.h"
+  "include/json-node.h"
   "include/json-populator.h"
-  #"include/json-utils.h"
   "include/mmap-manager.h"
   "include/stack-corkscrew.h"
   "include/stack-symbolicator.h"
@@ -23,10 +23,12 @@ set (PT_DAEMON_UTILS_INCLUDES
 
 set (PT_DAEMON_UTILS_SRCS
   "src/addr2line.cpp"
+  "src/json-node.cpp"
   "src/json-populator.cpp"
-  #"src/json-utils.cpp"
   "src/mmap-manager.cpp"
   "src/stack-corkscrew.cpp"
+  "src/stack-corkscrew-libcppabi.cpp"
+  "src/stack-corkscrew-libunwind.cpp"
   "src/stack-symbolicator.cpp"
   )
 
@@ -43,10 +45,22 @@ add_dependencies (pt-daemon-utils kvr)
 
 target_link_libraries (pt-daemon-utils kvr)
 
-#
-# test-mmap-manager
-#
+add_executable (test-json-node "tests/test-json-node.cpp")
+
+target_link_libraries (test-json-node pt-daemon-utils)
+
+add_executable (test-json-populator "tests/test-json-populator.cpp")
+
+target_link_libraries (test-json-populator pt-daemon-utils)
 
 add_executable (test-mmap-manager "tests/test-mmap-manager.cpp")
 
 target_link_libraries (test-mmap-manager pt-daemon-utils)
+
+add_executable (test-stack-corkscrew "tests/test-stack-corkscrew.cpp")
+
+target_link_libraries (test-stack-corkscrew pt-daemon-utils)
+
+add_executable (test-stack-symbolicator "tests/test-stack-symbolicator.cpp")
+
+target_link_libraries (test-stack-symbolicator pt-daemon-utils)

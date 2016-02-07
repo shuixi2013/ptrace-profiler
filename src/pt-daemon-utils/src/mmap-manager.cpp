@@ -242,29 +242,31 @@ const MemoryMapRegion *MemoryMapManager::FindMapForAddress (uint64_t address) co
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool MemoryMapManager::PopulateJsonObject (kvr::value &node) const
+bool MemoryMapManager::PopulateJsonObject (JsonNode &node) const
 {
-  if (!node.is_map ())
+  if (!node.IsObject ())
   {
-    assert (node.is_map ());
+    assert (node.IsObject ());
 
     return false;
   }
 
-  kvr::value *array = node.insert_array ("frames");
+  kvr::value *array = node.GetImpl ()->insert_array ("frames");
 
-  return PopulateJsonArray (*array);
+  JsonNodeKvr arrayNode (*array);
+
+  return PopulateJsonArray (arrayNode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool MemoryMapManager::PopulateJsonArray (kvr::value &node) const
+bool MemoryMapManager::PopulateJsonArray (JsonNode &node) const
 {
-  if (!node.is_array ())
+  if (!node.IsArray ())
   {
-    assert (node.is_array ());
+    assert (node.IsArray ());
 
     return false;
   }
@@ -275,7 +277,7 @@ bool MemoryMapManager::PopulateJsonArray (kvr::value &node) const
   {
     const MemoryMapRegion &map = *it;
 
-    kvr::value *mapNode = node.push_map ();
+    kvr::value *mapNode = node.GetImpl()->push_map ();
 
     char buffer [32];
 

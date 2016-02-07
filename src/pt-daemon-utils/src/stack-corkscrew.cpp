@@ -20,37 +20,12 @@
 
 #include <inttypes.h>
 
-#if defined (ANDROID) || defined (__linux__)
-
-#include <libunwind.h>
-
-#include <libunwind-ptrace.h>
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define UNWIND_STACK_POINTER 1
-
-#define UNWIND_FUNCTION_NAME 0
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 StackCorkscrew::StackCorkscrew ()
 {
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-StackCorkscrew::StackCorkscrew (pid_t ppid, pid_t tid, size_t ignoreDepth, size_t maxDepth)
-{
-  Unwind (ppid, tid, ignoreDepth, maxDepth);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,310 +40,31 @@ StackCorkscrew::~StackCorkscrew ()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-size_t StackCorkscrew::Unwind (pid_t ppid, pid_t tid, size_t ignoreDepth, size_t maxDepth)
+bool StackCorkscrew::PopulateJsonObject (JsonNode &node) const
 {
-  assert (ppid > 0);
-
-  assert (tid >= ppid);
-
-  m_frames.clear ();
-
-  if (maxDepth == 0)
+  if (!node.IsObject ())
   {
-    return 0;
-  }
-
-#ifdef UNW_VERSION
-
-  static unw_addr_space_t addr_space = unw_create_addr_space (&_UPT_accessors, 0);
-
-  if (!addr_space)
-  {
-    fprintf (stderr, "unw_create_addr_space failed.\n");
-
-    fflush (stderr);
-
-    return 0;
-  }
-
-#if UNWIND_FUNCTION_NAME
-
-  unw_map_cursor_t map_cursor;
-
-  if (unw_map_cursor_create (&map_cursor, tid) < 0)
-  {
-    fprintf (stderr, "Failed to create map cursor.\n");
-
-    fflush (stderr);
-
-    return 0;
-  }
-
-  unw_map_set (addr_space, &map_cursor);
-
-#endif
-
-  struct UPT_info* upt_info = reinterpret_cast<struct UPT_info*> (_UPT_create (tid));
-
-  if (!upt_info)
-  {
-    fprintf (stderr, "Failed to create upt info.\n");
-
-    fflush (stderr);
-
-    return 0;
-  }
-
-  unw_cursor_t cursor;
-
-  {
-    int error = unw_init_remote (&cursor, addr_space, upt_info);
-
-    if (error < 0)
-    {
-      fprintf (stderr, "unw_init_remote failed (%d)\n", error);
-
-      fflush (stderr);
-
-      return 0;
-    }
-  }
-
-#endif
-
-  bool shouldContinue = false;
-
-  size_t numFrames = 0;
-
-  do
-  {
-    // 
-    // Evaluate instruction pointer / program counter address.
-    // 
-
-    uint64_t pc = 0;
-
-#ifdef UNW_VERSION
-
-    {
-      unw_word_t unwound_pc;
-
-      int error = unw_get_reg (&cursor, UNW_REG_IP, &unwound_pc);
-
-      if (error < 0)
-      {
-        fprintf (stderr, "Failed to read IP (%d)\n", error);
-
-        fflush (stderr);
-
-        break;
-      }
-
-      pc = unwound_pc;
-    }
-
-#endif
-
-    uint64_t sp = 0;
-
-#ifdef UNW_VERSION
-
-  #if UNWIND_STACK_POINTER
-
-    {
-      unw_word_t unwound_sp;
-
-      int error = unw_get_reg (&cursor, UNW_REG_SP, &unwound_sp);
-
-      if (error < 0)
-      {
-        fprintf (stderr, "Failed to read SP (%d)\n", error);
-
-        fflush (stderr);
-
-        break;
-      }
-
-      sp = unwound_sp;
-    }
-
-  #endif
-
-#endif
-
-    if (ignoreDepth == 0)
-    {
-      const char *function = "";
-
-    #if UNWIND_FUNCTION_NAME
-
-      uintptr_t offset = 0;
-
-      char buffer [128];
-
-      unw_word_t value;
-
-      function = "??";
-
-      const int result = unw_get_proc_name_by_ip (addr_space, pc, buffer, sizeof (buffer), &value, upt_info);
-
-      if (result >= 0 && buffer [0] != '\0')
-      {
-        function = buffer;
-
-        offset = static_cast<uintptr_t>(value);
-      }
-
-    #endif
-
-      StackFrame frame;
-
-      frame.m_level = numFrames;
-
-      frame.m_pc = pc;
-
-    #if UNWIND_STACK_POINTER
-
-      frame.m_sp = sp;
-
-    #endif
-
-      strncpy (frame.m_function, function, sizeof (frame.m_function));
-
-      m_frames.push_back (frame);
-
-      numFrames++;
-    }
-    else
-    {
-      ignoreDepth--;
-    }
-
-  #ifdef UNW_VERSION
-
-    shouldContinue = (unw_step (&cursor) > 0);
-
-  #endif
-  }
-  while (shouldContinue && numFrames < maxDepth);
-
-#ifdef UNW_VERSION
-
-  _UPT_destroy (upt_info);
-
-  #if UNWIND_FUNCTION_NAME
-
-  unw_map_cursor_destroy (&map_cursor);
-
-  unw_map_cursor_clear (&map_cursor);
-
-  #endif
-
-#endif
-
-  return m_frames.size ();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-size_t StackCorkscrew::LoadFromJson (const kvr::value &node)
-{
-  assert (node.is_array ());
-
-  for (size_t i = 0; i < node.length (); ++i)
-  {
-    StackFrame frame;
-
-    kvr::value *frameNode = node.element (i);
-
-    if (!frameNode)
-    {
-      assert (frameNode);
-
-      continue;
-    }
-
-    kvr::value *levelNode = frameNode ? frameNode->find ("level") : NULL;
-
-    if (levelNode && levelNode->is_integer ())
-    {
-      frame.m_level = levelNode->get_integer ();
-    }
-
-    kvr::value *pcNode = frameNode ? frameNode->find ("pc") : NULL;
-
-    if (pcNode && pcNode->is_string ())
-    {
-      const char *buffer = pcNode->get_string ();
-
-      frame.m_pc = strtoll (buffer, NULL, 16);
-    }
-
-    kvr::value *spNode = frameNode ? frameNode->find ("sp") : NULL;
-
-    if (spNode && spNode->is_string ())
-    {
-      const char *buffer = spNode->get_string ();
-
-      frame.m_sp = strtoll (buffer, NULL, 16);
-    }
-
-    kvr::value *funcNode = frameNode ? frameNode->find ("func") : NULL;
-
-    if (funcNode)
-    {
-      frame.m_function [0] = '\0';
-
-      if (funcNode->is_string ())
-      {
-        kvr::sz_t bufferLen = 0;
-
-        const char *buffer = funcNode->get_string (&bufferLen);
-
-        strncpy (frame.m_function, buffer, std::min (bufferLen, kvr::sz_t (128)));
-      }
-
-      if (strlen (frame.m_function) == 0)
-      {
-        snprintf (frame.m_function, sizeof (frame.m_function), "#%zu", i);
-      }
-    }
-
-    m_frames.push_back (frame);
-  }
-
-  return m_frames.size ();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool StackCorkscrew::PopulateJsonObject (kvr::value &node) const
-{
-  if (!node.is_map ())
-  {
-    assert (node.is_map ());
+    assert (node.IsObject ());
 
     return false;
   }
 
-  kvr::value *array = node.insert_array ("frames");
+  kvr::value *array = node.GetImpl ()->insert_array ("frames");
 
-  return PopulateJsonArray (*array);
+  JsonNodeKvr arrayNode (*array);
+
+  return PopulateJsonArray (arrayNode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool StackCorkscrew::PopulateJsonArray (kvr::value &node) const
+bool StackCorkscrew::PopulateJsonArray (JsonNode &node) const
 {
-  if (!node.is_array ())
+  if (!node.IsArray ())
   {
-    assert (node.is_array ());
+    assert (node.IsArray ());
 
     return false;
   }
@@ -377,7 +73,7 @@ bool StackCorkscrew::PopulateJsonArray (kvr::value &node) const
   {
     const StackFrame &frame = m_frames [i];
 
-    kvr::value *frameObj = node.push_map ();
+    kvr::value *frameObj = node.GetImpl ()->push_map ();
 
     if (!frameObj)
     {
@@ -423,6 +119,17 @@ bool StackCorkscrew::GetFrame (size_t index, StackFrame &frame) const
   }
 
   frame = m_frames [index];
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool StackCorkscrew::PushFrame (const StackFrame &frame)
+{
+  m_frames.push_back (frame);
 
   return true;
 }
