@@ -111,14 +111,19 @@ bool StackCorkscrew::PopulateJsonArray (JsonNode &node) const
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool StackCorkscrew::GetFrame (size_t index, StackFrame &frame) const
+bool StackCorkscrew::GetFrame (size_t index, StackFrame *frame) const
 {
+  if (!frame)
+  {
+    return false;
+  }
+
   if (index >= m_frames.size ())
   {
     return false;
   }
 
-  frame = m_frames [index];
+  *frame = m_frames [index];
 
   return true;
 }

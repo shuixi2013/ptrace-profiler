@@ -45,22 +45,4 @@ add_dependencies (pt-daemon-utils kvr)
 
 target_link_libraries (pt-daemon-utils kvr)
 
-add_executable (test-json-node "tests/test-json-node.cpp")
-
-target_link_libraries (test-json-node pt-daemon-utils)
-
-add_executable (test-json-populator "tests/test-json-populator.cpp")
-
-target_link_libraries (test-json-populator pt-daemon-utils)
-
-add_executable (test-mmap-manager "tests/test-mmap-manager.cpp")
-
-target_link_libraries (test-mmap-manager pt-daemon-utils)
-
-add_executable (test-stack-corkscrew "tests/test-stack-corkscrew.cpp")
-
-target_link_libraries (test-stack-corkscrew pt-daemon-utils)
-
-add_executable (test-stack-symbolicator "tests/test-stack-symbolicator.cpp")
-
-target_link_libraries (test-stack-symbolicator pt-daemon-utils)
+add_subdirectory (tests)

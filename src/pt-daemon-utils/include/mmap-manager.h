@@ -60,8 +60,6 @@ public:
 
   ~MemoryMapManager ();
 
-  size_t ParseJson (const kvr::value &mapsRoot);
-
   size_t ParseUnixProcessMapsFile (const char *filename);
 
   const MemoryMapRegion *FindMapForAddress (uint64_t address) const;

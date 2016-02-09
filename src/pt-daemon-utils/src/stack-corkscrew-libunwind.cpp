@@ -50,6 +50,8 @@ size_t StackCorkscrewLibunwind::Unwind (pid_t ppid, pid_t tid, size_t ignoreDept
 
   assert (tid >= ppid);
 
+  (void) ignoreDepth;
+
   m_frames.clear ();
 
   if (maxDepth == 0)
@@ -133,9 +135,9 @@ size_t StackCorkscrewLibunwind::Unwind (pid_t ppid, pid_t tid, size_t ignoreDept
     // Evaluate instruction pointer / program counter address.
     //
 
-    uint64_t pc = 0;
-
 #if UNWIND_REMOTE_SUPPORTED
+
+    uint64_t pc = 0;
 
     {
       unw_word_t unwound_pc;
@@ -154,11 +156,9 @@ size_t StackCorkscrewLibunwind::Unwind (pid_t ppid, pid_t tid, size_t ignoreDept
       pc = unwound_pc;
     }
 
-#endif
+#if UNWIND_STACK_POINTER
 
     uint64_t sp = 0;
-
-#if UNWIND_REMOTE_SUPPORTED && UNWIND_STACK_POINTER
 
     {
       unw_word_t unwound_sp;
@@ -224,8 +224,6 @@ size_t StackCorkscrewLibunwind::Unwind (pid_t ppid, pid_t tid, size_t ignoreDept
     {
       ignoreDepth--;
     }
-
-#if UNWIND_REMOTE_SUPPORTED
 
     shouldContinue = (unw_step (&cursor) > 0);
 

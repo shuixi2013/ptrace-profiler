@@ -1,3 +1,6 @@
 [submodule "externals/kvr"]
 	path = externals/kvr
 	url = https://github.com/webbju/kvr.git
+[submodule "externals/googletest"]
+	path = externals/googletest
+	url = https://github.com/google/googletest.git

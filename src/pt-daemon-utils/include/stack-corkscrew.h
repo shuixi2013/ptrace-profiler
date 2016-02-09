@@ -69,7 +69,7 @@ public:
 
   virtual size_t Unwind (pid_t ppid, pid_t tid, size_t ignoreDepth, size_t maxDepth) = 0;
 
-  bool GetFrame (size_t index, StackFrame &frame) const;
+  bool GetFrame (size_t index, StackFrame *frame) const;
 
   bool PushFrame (const StackFrame &frame);
 
