@@ -407,9 +407,6 @@ int main (int argc, char* argv[])
     return ERR_FAILED;
   }
 
-  //
-  //
-
   kvr::ctx *jsonContext = kvr::ctx::create ();
 
   JsonNodeKvr jsonRootNode (jsonContext->create_value ()->conv_map ());

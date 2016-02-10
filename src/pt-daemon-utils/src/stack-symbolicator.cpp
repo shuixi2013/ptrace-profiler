@@ -47,7 +47,6 @@ void StackSymbolicator::Preprocess (const StackCorkscrew &corkscrew)
     uint64_t token = 0;
 
     {
-
       auto it = m_tokensByPc.find (frame.m_pc);
 
       if (it != m_tokensByPc.end ())

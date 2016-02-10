@@ -81,11 +81,21 @@ size_t MemoryMapManager::ParseUnixProcessMapsFile (const char *filename)
 
     size_t i = 0;
 
+    bool validEntry = true;
+
+    int result = F_OK;
+
     do
     {
-      fread (&buffer [i], 1, 1, mapsFile);
+      result = fread (&buffer [i], 1, 1, mapsFile);
+
+      if ((buffer [i] == '\0')
+        || (buffer [i] == '\n'))
+      {
+        break;
+      }
     }
-    while (buffer [i++] != '\n');
+    while (++i && (result >= 0));
 
     buffer [i - 1] = '\0';
 
@@ -98,14 +108,22 @@ size_t MemoryMapManager::ParseUnixProcessMapsFile (const char *filename)
 
     size_t pathnameLen = strlen (pathname);
 
-    const bool validEntry = (pathnameLen >= 7) // at very least must be libX.so
-      && ((strncmp (pathname + (pathnameLen -  3), ".so", 3) == 0)
-      || (strncmp (pathname + (pathnameLen - 4), ".dex", 4) == 0)
-      || (strncmp (pathname + (pathnameLen - 4), ".oat", 4) == 0));
+    if ((pathnameLen == 0)
+      || (strchr (pathname, ' '))
+    #if 0
+      &&(pathnameLen < 7) // at very least must be libX.so
+      && ((strncmp (pathname + (pathnameLen -  3), ".so", 3) != 0)
+          || (strncmp (pathname + (pathnameLen - 4), ".dex", 4) != 0)
+          || (strncmp (pathname + (pathnameLen - 4), ".oat", 4) != 0))
+    #endif
+      )
+    {
+      validEntry = false;
+    }
 
     if (validEntry)
     {
-      strcpy (mapData.pathname, pathname);
+      strncpy (mapData.pathname, pathname, 128);
 
       m_regions.push_back (mapData);
     }
